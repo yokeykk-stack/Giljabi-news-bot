@@ -21,6 +21,7 @@ MONTHLY = re.compile(r"news/archive/media_[0-9]{4}-(?:0[1-9]|1[0-2])\.json\Z")
 STALE_STATE = re.compile(
     r"news/archive/media-sweep-state\.json\.stale-[0-9]{8}T[0-9]{6}Z(?:-[0-9]+)?\Z"
 )
+DELETABLE = {"news/archive/media-sweep-state.json"}
 
 
 def git(repo: Path, *args: str) -> bytes:
@@ -61,6 +62,28 @@ def changed_paths(repo: Path, staged_only: bool) -> set[str]:
     return paths
 
 
+def deleted_paths(repo: Path, staged_only: bool) -> set[str]:
+    args = ["diff"]
+    if staged_only:
+        args.append("--cached")
+    args.extend(("--no-renames", "--diff-filter=D", "--name-only", "-z", "--"))
+    deleted = split_z(git(repo, *args))
+    if not staged_only:
+        deleted |= split_z(
+            git(
+                repo,
+                "diff",
+                "--cached",
+                "--no-renames",
+                "--diff-filter=D",
+                "--name-only",
+                "-z",
+                "--",
+            )
+        )
+    return deleted
+
+
 def staged_modes(repo: Path) -> dict[str, str]:
     result: dict[str, str] = {}
     for record in git(repo, "ls-files", "--stage", "-z", "--").split(b"\0"):
@@ -80,6 +103,9 @@ def validate(repo: Path, staged_only: bool) -> list[str]:
     rejected = [path for path in paths if not allowed(path)]
     if rejected:
         raise RuntimeError("non-allowlisted target changes: " + ", ".join(rejected))
+    forbidden_deletions = sorted(deleted_paths(repo, staged_only) - DELETABLE)
+    if forbidden_deletions:
+        raise RuntimeError("append-only/core files cannot be deleted: " + ", ".join(forbidden_deletions))
     for path in paths:
         assert_regular_path(repo, path)
     for required in ("news/feed.json", "news/feed.js", "news/headlines.json"):

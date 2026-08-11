@@ -24,4 +24,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Validate workflow security and update contracts
-        run: python tools/test_public_bot.py
+        run: |
+          python tools/test_public_bot.py
+          python tools/test_publish_bundle.py

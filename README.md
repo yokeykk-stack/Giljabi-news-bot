@@ -2,7 +2,7 @@
 
 감사길잡이의 **감사 관련 언론 이슈**를 PC가 꺼져 있어도 무료로 갱신하기 위한 공개 스케줄러입니다.
 
-이 저장소에는 감사길잡이 본체 코드나 비공개 데이터가 들어 있지 않습니다. GitHub Actions가 전용 SSH deploy key로 비공개 본체 `hsgamsa00-netizen/Giljabi`의 최신 `main`을 얕게 checkout하고, 본체에 포함된 검증된 수집기만 실행한 뒤 결과 파일을 다시 본체에 push합니다.
+이 저장소에는 감사길잡이 본체 코드나 비공개 데이터가 들어 있지 않습니다. GitHub Actions가 읽기 전용 SSH deploy key로 비공개 본체 `hsgamsa00-netizen/Giljabi`의 최신 `main` 중 필요한 파일만 부분 checkout하고, 본체에 포함된 검증된 수집기만 실행합니다. 검증된 공개 뉴스 데이터 묶음만 별도 새 러너로 넘긴 뒤 쓰기 전용 key로 본체에 push합니다.
 
 ## 자동화
 
@@ -17,14 +17,16 @@
 
 ## 보안 경계
 
-- 대상 저장소 한 곳에만 쓰는 SSH deploy key 사용
-- deploy key는 clone과 최종 push 단계에만 일시 주입하고 수집·검증 단계에서는 제거
+- 대상 저장소 한 곳에만 연결한 읽기용·쓰기용 SSH deploy key를 분리
+- 수집 job과 쓰기 job을 새 러너로 격리하고, 1일 보존 공개 데이터 묶음만 전달
+- deploy key는 clone과 최종 push 단계에만 일시 주입하며 본체 코드를 실행할 때는 제거
 - GitHub 공식 Ed25519 host key 고정 및 엄격한 host 검증
 - 모든 GitHub 제공 action을 40자리 commit SHA로 고정
 - 배포 workflow는 `schedule`과 `workflow_dispatch`에서만 실행
 - `private-target` Environment는 `main` branch에서만 사용
 - PR 검증 workflow에는 deploy key를 참조하지 않음
-- artifact·cache·디버그 SSH 로그를 만들지 않음
+- 비공개 checkout·key·디버그 SSH 로그를 artifact에 넣지 않음
+- artifact에는 허용된 공개 feed/archive 파일만 포함하고 1일 뒤 삭제하며 cache는 사용하지 않음
 - 같은 본체 branch를 쓰는 시간당 작업과 스윕을 하나의 concurrency group으로 직렬화
 - Google 뉴스 오류 시 95% 건강도 gate와 회로 차단이 기존 피드를 보존
 
