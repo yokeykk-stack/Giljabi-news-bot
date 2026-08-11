@@ -1,0 +1,42 @@
+name: Public bot keepalive
+
+on:
+  schedule:
+    - cron: "23 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: giljabi-public-bot-maintenance
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out this public repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Record weekly repository activity
+        shell: bash
+        run: |
+          set -euo pipefail
+          stamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          cat > status/heartbeat.json <<JSON
+          {
+            "status": "active",
+            "updatedAt": "$stamp",
+            "purpose": "Prevent public scheduled workflows from being disabled after repository inactivity"
+          }
+          JSON
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- status/heartbeat.json
+          git commit -m "chore: refresh public bot heartbeat" || exit 0
+          git push origin HEAD:main

@@ -1,0 +1,5 @@
+{
+  "status": "bootstrap",
+  "updatedAt": null,
+  "purpose": "Prevent public scheduled workflows from being disabled after repository inactivity"
+}
