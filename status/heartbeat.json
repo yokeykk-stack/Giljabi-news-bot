@@ -1,5 +1,5 @@
 {
-  "status": "bootstrap",
-  "updatedAt": null,
+  "status": "active",
+  "updatedAt": "2026-08-13T10:31:00Z",
   "purpose": "Prevent public scheduled workflows from being disabled after repository inactivity"
 }

@@ -30,6 +30,9 @@
 - 같은 본체 branch를 쓰는 시간당 작업과 스윕을 하나의 concurrency group으로 직렬화
 - Google 뉴스 오류 시 95% 건강도 gate와 회로 차단이 기존 피드를 보존
 
-초기 배포 시 키가 등록될 때까지 두 배포 workflow는 비활성 상태로 둡니다. 설정 절차는 [deploy key 안내](docs/DEPLOY_KEY_SETUP.md)를 따릅니다.
+2026-08-13에 읽기·쓰기 deploy key 등록과 hourly·daily 수동 라이브 게이트를
+완료하고 두 배포 workflow를 활성화했습니다. 비공개 본체의 기존 언론 예약은
+dispatch-only 비상 경로로 전환했으며, 국내 PC의 50분 언론 폴백은 유지합니다.
+키 교체·복구 절차는 [deploy key 안내](docs/DEPLOY_KEY_SETUP.md)를 따릅니다.
 
 표준 GitHub-hosted runner는 공개 저장소에서 무료입니다. 자세한 기준은 [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)을 참고하십시오.
