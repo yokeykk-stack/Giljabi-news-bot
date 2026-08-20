@@ -2,7 +2,9 @@ name: Daily media recovery
 
 on:
   schedule:
-    - cron: "47 18 * * *"
+    # 6시간마다 — 하루 1회(350질의)로는 9,594질의 한 바퀴에 27일이 걸려, 상한으로 흘린
+    # 시의성 있는 보도를 제때 못 되찾았다(2026-08-20 실측). 4회×700질의면 약 3.4일이다.
+    - cron: "47 */6 * * *"
   workflow_dispatch:
 
 permissions:
@@ -20,7 +22,7 @@ jobs:
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     environment: private-target
-    timeout-minutes: 10
+    timeout-minutes: 16
     outputs:
       publish: ${{ steps.build.outputs.publish }}
       sweep_status: ${{ steps.build.outputs.sweep_status }}
@@ -113,7 +115,7 @@ jobs:
         run: |
           set -euo pipefail
           set +e
-          python tools/sweep_media_windows.py --weeks 6 --max-seconds 240 --max-requests 350 --state-file news/archive/media-sweep-state.json | tee "$RUNNER_TEMP/sweep.log"
+          python tools/sweep_media_windows.py --weeks 6 --max-seconds 420 --max-requests 700 --state-file news/archive/media-sweep-state.json | tee "$RUNNER_TEMP/sweep.log"
           sweep_status="${PIPESTATUS[0]}"
           set -e
           python tools/accumulate_media_archive.py
