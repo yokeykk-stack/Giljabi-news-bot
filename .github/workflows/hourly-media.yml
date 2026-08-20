@@ -86,6 +86,25 @@ jobs:
             '/tools/test_issue_monitor.js' '/tools/run_hourly_issue_update.ps1' \
             '/tools/install_hourly_issue_update.ps1' '/tools/run_hourly_issue_update_hidden.vbs'
 
+      # 게이트가 읽어야 하는 파일이 위 목록에서 빠지면, 종전에는 언론 수집을 90초 다 마친
+      # 뒤 발행 직전에 ENOENT 로 죽어 수집분이 통째로 버려졌다(2026-08-20: 19회 연속 실패).
+      # 필요한 파일 목록을 게이트 소스에서 직접 뽑아 **수집 전에** 확인한다.
+      - name: Fail fast when the checkout hides a file the gate must read
+        working-directory: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing="$(node -e '
+            const fs = require("fs");
+            const source = fs.readFileSync("tools/test_issue_monitor.js", "utf8");
+            const wanted = [...source.matchAll(/[^A-Za-z]read\("([^"]+)"\)/g)].map(m => m[1]);
+            process.stdout.write([...new Set(wanted)].filter(f => !fs.existsSync(f)).join(" "));
+          ')"
+          if [ -n "$missing" ]; then
+            echo "::error::sparse-checkout omits files tools/test_issue_monitor.js reads: $missing"
+            exit 1
+          fi
+
       - name: Skip a duplicate fresh collection
         id: freshness
         working-directory: target
