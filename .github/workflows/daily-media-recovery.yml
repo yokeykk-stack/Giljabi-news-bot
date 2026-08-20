@@ -72,6 +72,7 @@ jobs:
             git@github.com:hsgamsa00-netizen/Giljabi.git target
           GIT_SSH_COMMAND="/usr/bin/ssh -F $config" /usr/bin/git -C target sparse-checkout set --no-cone -- \
             '/.github/workflows/update-issue-monitor.yml' \
+            '/.github/workflows/sweep-media-windows.yml' \
             '/app.js' '/dashboard.js' '/electron/main.js' '/followAlong.js' '/index.html' \
             '/issueMonitor.js' '/loader.js' '/onboarding.js' '/server.js' '/styles.css' '/sw.js' '/tour.js' \
             '/news/feed.json' '/news/feed.js' '/news/headlines.json' \
