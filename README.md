@@ -9,11 +9,13 @@
 | 작업 | 주기 | 역할 |
 |---|---:|---|
 | `Hourly media update` | 매시간 :17 | Google 뉴스 400개 논리 질의, 검증·아카이브·본체 push |
-| `Daily media recovery` | 매일 18:47 UTC | 최근 6주 누락 가능 구간을 체크포인트 방식으로 복구 |
+| `Six-hour media recovery` | 6시간마다 :47 UTC | 최근 6주 누락 가능 구간을 회차당 최대 420초·700질의로 체크포인트 복구 |
 | `Public bot keepalive` | 매주 월요일 | 공개 저장소의 60일 무활동 예약 중지를 방지 |
 | `Validate public bot` | push/PR | 공개 워크플로의 보안·동시성·SHA 고정 계약 검사 |
 
-시간당 작업은 원격 언론 수집시각이 50분 이내면 즉시 종료합니다. 국내 PC 폴백과 경합해 본체 `main`이 먼저 바뀌면 비교 후 push를 거부하고, 다음 예약 회차가 최신 상태에서 다시 수집하므로 공식 감사자료를 덮어쓰지 않습니다.
+시간당 작업은 원격 언론 수집시각이 50분 이내면 즉시 종료합니다. 6시간 복구 작업의 build job은 16분 제한으로, 7분 수집 상한 뒤 clone/setup/검증과 bundle 준비에 9분의 여유를 둡니다. 국내 PC 폴백과 경합해 본체 `main`이 먼저 바뀌면 비교 후 push를 거부하고, 다음 예약 회차가 최신 상태에서 다시 수집하므로 공식 감사자료를 덮어쓰지 않습니다.
+
+복구 주기와 수집 상한의 기준은 `daily-media-recovery.yml` build job의 `RECOVERY_*` 환경값입니다. 계약 테스트는 YAML 계층에서 이 값을 읽고 cron의 실제 실행 시각, shell 명령 인자, job timeout 여유가 같은 계약을 구현하는지 검증합니다.
 
 ## 보안 경계
 
@@ -30,7 +32,7 @@
 - 같은 본체 branch를 쓰는 시간당 작업과 스윕을 하나의 concurrency group으로 직렬화
 - Google 뉴스 오류 시 95% 건강도 gate와 회로 차단이 기존 피드를 보존
 
-2026-08-13에 읽기·쓰기 deploy key 등록과 hourly·daily 수동 라이브 게이트를
+2026-08-13에 읽기·쓰기 deploy key 등록과 hourly·six-hour recovery 수동 라이브 게이트를
 완료하고 두 배포 workflow를 활성화했습니다. 비공개 본체의 기존 언론 예약은
 dispatch-only 비상 경로로 전환했으며, 국내 PC의 50분 언론 폴백은 유지합니다.
 키 교체·복구 절차는 [deploy key 안내](docs/DEPLOY_KEY_SETUP.md)를 따릅니다.
