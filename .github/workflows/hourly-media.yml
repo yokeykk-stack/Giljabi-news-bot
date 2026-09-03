@@ -1,8 +1,9 @@
-name: Hourly media update
+name: Twice-daily media update
 
 on:
   schedule:
-    - cron: "17 * * * *"
+    # ★하루 2회(00:17·12:17 UTC = 09:17·21:17 KST). 매시 돌리다 Google News 에 IP 차단당했다(2026-09-02~03).
+    - cron: "17 0,12 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -130,7 +131,7 @@ jobs:
               raise SystemExit(1)
           collected = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
           age = datetime.now(timezone.utc) - collected.astimezone(timezone.utc)
-          if timedelta(0) <= age < timedelta(minutes=50):
+          if timedelta(0) <= age < timedelta(minutes=600):
               print(f"::notice::Remote media feed is {age.total_seconds() / 60:.1f} minutes old; no-op.")
               raise SystemExit(0)
           raise SystemExit(1)
