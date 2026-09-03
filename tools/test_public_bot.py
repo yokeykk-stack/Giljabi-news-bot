@@ -20,7 +20,7 @@ DEPLOY = [WORKFLOWS / "hourly-media.yml", WORKFLOWS / "daily-media-recovery.yml"
 failures: list[str] = []
 
 RECOVERY_CONTRACT = {
-    "interval_hours": 6,
+    "interval_hours": 24,
     "minute_utc": 47,
     "weeks": 6,
     "max_seconds": 420,
@@ -425,8 +425,8 @@ def main() -> int:
           groups == ["giljabi-private-main-writer", "giljabi-private-main-writer"])
 
     hourly = text(WORKFLOWS / "hourly-media.yml")
-    check("hourly media freshness is independently gated at 50 minutes",
-          "mediaCollectedAt" in hourly and "timedelta(minutes=50)" in hourly)
+    check("twice-daily media freshness is independently gated at 600 minutes",
+          "mediaCollectedAt" in hourly and "timedelta(minutes=600)" in hourly)
     check("hourly collection uses bounded concurrency and deadline",
           "--media-concurrency=3" in hourly and "--media-deadline-seconds=300" in hourly
           and "git reset --hard" not in hourly)
@@ -453,7 +453,7 @@ def main() -> int:
             recovery, ("jobs", "build", "env", "RECOVERY_MAX_REQUESTS")
         ),
     }
-    check("recovery job declares one six-hour 420-second 700-request contract",
+    check("recovery job declares one daily 420-second 700-request contract",
           recovery_env == {
               "RECOVERY_INTERVAL_HOURS": str(RECOVERY_CONTRACT["interval_hours"]),
               "RECOVERY_MINUTE_UTC": str(RECOVERY_CONTRACT["minute_utc"]),
@@ -486,7 +486,7 @@ def main() -> int:
     )
     check("recovery build timeout leaves at least eight minutes after the sweep deadline",
           timeout_margin >= RECOVERY_CONTRACT["minimum_timeout_margin_minutes"])
-    check("six-hour recovery publishes action-required metadata before returning its status",
+    check("daily recovery publishes action-required metadata before returning its status",
           recovery.index("git commit -m") < recovery.index("Report recovery action required")
           and "needs.build.result == 'success'" in recovery
           and "needs.build.outputs.sweep_status != ''" in recovery)

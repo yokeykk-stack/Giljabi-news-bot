@@ -1,11 +1,11 @@
-name: Weekly media recovery
+name: Daily media recovery
 
 on:
   schedule:
     # 6시간마다 — 하루 1회(350질의)로는 9,594질의 한 바퀴에 27일이 걸려, 상한으로 흘린
     # 시의성 있는 보도를 제때 못 되찾았다(2026-08-20 실측). 4회×700질의면 약 3.4일이다.
-    # ★주 1회(일 15:47 UTC = 월 00:47 KST). 회당 최대 700요청을 하루 4번 돌려 차단을 키우고 있었다.
-    - cron: "47 15 * * 0"
+    # ★하루 1회(00:47 UTC = 09:47 KST). 회당 최대 700요청을 하루 4번 돌려 Google 차단을 키우고 있었다.
+    - cron: "47 0 * * *"
   workflow_dispatch:
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 16
     # 이 job의 실행 계약. cron은 env를 참조할 수 없으므로 계약 테스트가 동등성을 검증한다.
     env:
-      RECOVERY_INTERVAL_HOURS: "6"
+      RECOVERY_INTERVAL_HOURS: "24"
       RECOVERY_MINUTE_UTC: "47"
       RECOVERY_WEEKS: "6"
       RECOVERY_MAX_SECONDS: "420"
