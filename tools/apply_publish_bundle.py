@@ -135,6 +135,42 @@ def _stage_blob(repo: Path, relative: str, content: bytes) -> None:
     _git(repo, "update-index", "--add", "--cacheinfo", f"100644,{object_id},{relative}")
 
 
+def _assert_safe_rebase(repo: Path, base: str, head: str, touched: list[str]) -> None:
+    """Allow applying onto a newer HEAD only when nothing the bundle writes changed since its base.
+
+    The private target advances on its own (hourly official feed pushes, portal index refreshes,
+    status stamps).  A bundle built on an older base is still exact for every path it writes as
+    long as those paths are byte-identical between the base and HEAD; any other intervening change
+    is irrelevant to it.  If a bundle path did change, the bundle would clobber that change, so the
+    publish is refused and the next scheduled run rebuilds on the new base.
+    """
+    try:
+        _git(repo, "cat-file", "-e", f"{base}^{{commit}}")
+        _git(repo, "merge-base", "--is-ancestor", base, head)
+    except subprocess.CalledProcessError as exc:
+        raise BundleError(
+            f"base commit mismatch: expected {base}, got {head} "
+            "(base is not a known ancestor of HEAD; the clone is too shallow or history diverged)"
+        ) from exc
+    changed = [
+        entry
+        for entry in _git(repo, "diff", "--name-only", "-z", base, head, "--", *sorted(touched))
+        .decode("utf-8")
+        .split("\0")
+        if entry
+    ]
+    if changed:
+        raise BundleError(
+            f"base commit mismatch: expected {base}, got {head}; "
+            "intervening commits touched bundle paths: " + ", ".join(sorted(changed))
+        )
+    count = _git(repo, "rev-list", "--count", f"{base}..{head}").decode("ascii").strip()
+    print(
+        f"base advanced by {count} commit(s) since {base[:12]}; none touched a bundle path, "
+        f"applying onto {head[:12]}"
+    )
+
+
 def apply_bundle(repo: Path, bundle: Path, kind: str) -> dict[str, Any]:
     """Validate *bundle*, apply it atomically per file, and stage exact changes."""
     if not isinstance(kind, str) or kind not in KINDS:
@@ -201,7 +237,7 @@ def apply_bundle(repo: Path, bundle: Path, kind: str) -> dict[str, Any]:
 
     head = _git(repo, "rev-parse", "--verify", "HEAD^{commit}").decode("ascii").strip()
     if head != manifest["baseSha"]:
-        raise BundleError(f"base commit mismatch: expected {manifest['baseSha']}, got {head}")
+        _assert_safe_rebase(repo, manifest["baseSha"], head, [*payloads, *manifest["deletions"]])
 
     targets = {relative: _safe_target(repo, relative) for relative in payloads}
     deletion_targets = {

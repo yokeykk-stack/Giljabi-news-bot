@@ -117,15 +117,47 @@ class PublishBundleTests(unittest.TestCase):
         with self.assertRaisesRegex(BundleError, "hash mismatch"):
             apply_bundle(self.clone_base("target-tamper"), bundle, "hourly")
 
-    def test_base_mismatch_is_rejected(self) -> None:
+    def test_base_advanced_on_a_bundle_path_is_rejected(self) -> None:
         self.stage_normal_update()
         bundle = self.make_bundle()
         target = self.clone_base("target-base")
-        (target / "new-base.txt").write_text("new commit\n", encoding="utf-8")
-        git(target, "add", "--", "new-base.txt")
-        git(target, "commit", "-qm", "advance base")
-        with self.assertRaisesRegex(BundleError, "base commit mismatch"):
+        # The target's own hourly official update rewrote the feed after the bundle was built.
+        (target / "news/feed.json").write_text('{"version":3}\n', encoding="utf-8")
+        git(target, "add", "--", "news/feed.json")
+        git(target, "commit", "-qm", "advance base on a bundle path")
+        with self.assertRaisesRegex(BundleError, "base commit mismatch.*news/feed.json"):
             apply_bundle(target, bundle, "hourly")
+
+    def test_base_advanced_on_unrelated_paths_is_applied(self) -> None:
+        # 2026-09-05: the daily recovery was refused because a status stamp commit landed first.
+        self.stage_normal_update()
+        bundle = self.make_bundle()
+        target = self.clone_base("target-advanced")
+        (target / "status").mkdir()
+        (target / "status/pap.json").write_text('{"ok":true}\n', encoding="utf-8")
+        git(target, "add", "--", "status/pap.json")
+        git(target, "commit", "-qm", "data: record portal check status")
+        manifest = apply_bundle(target, bundle, "hourly")
+        staged = git(target, "diff", "--cached", "--name-only", "--").splitlines()
+        self.assertEqual(sorted(staged), sorted(record["path"] for record in manifest["files"]))
+        self.assertTrue((target / "status/pap.json").exists())
+
+    def test_base_unknown_to_a_shallow_clone_is_rejected(self) -> None:
+        self.stage_normal_update()
+        bundle = self.make_bundle()
+        target = self.clone_base("target-shallow")
+        (target / "status").mkdir()
+        (target / "status/pap.json").write_text('{"ok":true}\n', encoding="utf-8")
+        git(target, "add", "--", "status/pap.json")
+        git(target, "commit", "-qm", "advance base")
+        shallow = self.root / "target-shallow-1"
+        subprocess.run(
+            ["git", "clone", "-q", "--no-local", "--depth", "1", str(target), str(shallow)], check=True
+        )
+        git(shallow, "config", "user.name", "bundle-test")
+        git(shallow, "config", "user.email", "bundle@test.invalid")
+        with self.assertRaisesRegex(BundleError, "base commit mismatch.*not a known ancestor"):
+            apply_bundle(shallow, bundle, "hourly")
 
     def test_archive_deletion_is_rejected(self) -> None:
         git(self.source, "rm", "-q", "--", "news/archive/manifest.json")

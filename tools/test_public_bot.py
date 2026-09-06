@@ -403,6 +403,9 @@ def main() -> int:
               and "python tools/" in build
               and "node tools/" in build
               and "GILJABI_READ_KEY" not in publish)
+        check(f"{path.name}: publish clone keeps enough history for a safe rebase",
+              "--filter=blob:none --sparse --depth 20 --single-branch --branch main --no-tags" in publish
+              and "--depth 1 --single-branch" not in publish)
         check(f"{path.name}: clean publish job never executes target code",
               "fetch --depth=1" in publish and "push --porcelain" in publish
               and "python tools/" not in publish and "node tools/" not in publish
